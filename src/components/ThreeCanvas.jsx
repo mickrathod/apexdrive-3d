@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { Physics } from '../world/Physics';
 import { World } from '../world/World';
 import { Bike } from '../world/Bike';
+import { Car } from '../world/Car';
 import { Controls } from '../ui/Controls';
 import { SoundManager } from '../audio/SoundManager';
 import { Minimap } from '../ui/Minimap';
@@ -90,10 +91,50 @@ export const ThreeCanvas = ({
     );
 
     const bike = new Bike(scene, physics, soundManager);
+    const car = new Car(scene, physics, soundManager);
+    car.mesh.visible = false;
+    car.body.position.set(0, -100, 0);
+
+    let activeVehicle = bike;
+    let vehicleType = 'bike';
+
+    const switchVehicle = () => {
+      const pos = activeVehicle.getPosition();
+      const spd = activeVehicle.speed;
+      const yw = activeVehicle.yaw;
+
+      if (vehicleType === 'bike') {
+        vehicleType = 'car';
+        bike.mesh.visible = false;
+        bike.body.position.set(0, -100, 0);
+        bike.body.velocity.set(0, 0, 0);
+
+        car.mesh.visible = true;
+        car.body.position.set(pos.x, pos.y + 0.4, pos.z);
+        car.yaw = yw;
+        car.speed = spd;
+        activeVehicle = car;
+        modalProxy.showZoneBanner('🏎️ SWITCHED TO MUSCLE CAR!');
+      } else {
+        vehicleType = 'bike';
+        car.mesh.visible = false;
+        car.body.position.set(0, -100, 0);
+        car.body.velocity.set(0, 0, 0);
+
+        bike.mesh.visible = true;
+        bike.body.position.set(pos.x, pos.y + 0.4, pos.z);
+        bike.yaw = yw;
+        bike.speed = spd;
+        activeVehicle = bike;
+        modalProxy.showZoneBanner('🏍️ SWITCHED TO STUNT MOTORCYCLE!');
+      }
+      soundManager.playBoost();
+    };
 
     // Controls bindings
-    controls.onReset = () => bike.reset();
-    controls.onHorn = () => bike.honk();
+    controls.onReset = () => activeVehicle.reset();
+    controls.onHorn = () => activeVehicle.honk();
+    controls.onSwitchVehicle = switchVehicle;
     controls.onToggleCamera = () => {
       cameraMode = (cameraMode + 1) % 2;
     };
@@ -103,14 +144,17 @@ export const ThreeCanvas = ({
       engineRef.current = {
         scene,
         bike,
+        car,
+        getActiveVehicle: () => activeVehicle,
+        switchVehicle,
         controls,
         soundManager,
         world,
         toggleCamera: () => {
           cameraMode = (cameraMode + 1) % 2;
         },
-        resetCar: () => bike.reset(),
-        honk: () => bike.honk(),
+        resetCar: () => activeVehicle.reset(),
+        honk: () => activeVehicle.honk(),
         setTheme: (t) => world.setTheme(t)
       };
     }
@@ -134,43 +178,43 @@ export const ThreeCanvas = ({
       // 1. Step physics
       physics.step(delta);
 
-      // 2. Update bike & input
-      bike.update(controls, delta);
+      // 2. Update active vehicle & input
+      activeVehicle.update(controls, delta);
 
       // 3. Update world zones & interactions
-      world.update(bike, delta);
+      world.update(activeVehicle, delta);
 
       // 4. Update camera
-      const bikePos = bike.getPosition();
-      const bikeSpeed = Math.abs(bike.speed);
+      const vehPos = activeVehicle.getPosition();
+      const vehSpeed = Math.abs(activeVehicle.speed);
 
       if (cameraMode === 0) {
-        const dynamicDist = 18 + (bikeSpeed / bike.maxSpeed) * 8;
-        const dynamicHeight = 14 + (bikeSpeed / bike.maxSpeed) * 3;
+        const dynamicDist = 18 + (vehSpeed / activeVehicle.maxSpeed) * 8;
+        const dynamicHeight = 14 + (vehSpeed / activeVehicle.maxSpeed) * 3;
         const targetPos = new THREE.Vector3(
-          bikePos.x,
-          bikePos.y + dynamicHeight,
-          bikePos.z + dynamicDist
+          vehPos.x,
+          vehPos.y + dynamicHeight,
+          vehPos.z + dynamicDist
         );
         camera.position.lerp(targetPos, delta * 4.5);
         cameraTarget.lerp(
-          new THREE.Vector3(bikePos.x, bikePos.y + 1.2, bikePos.z),
+          new THREE.Vector3(vehPos.x, vehPos.y + 1.2, vehPos.z),
           delta * 6.5
         );
         camera.lookAt(cameraTarget);
       } else {
-        const targetPos = new THREE.Vector3(bikePos.x, bikePos.y + 36, bikePos.z + 0.1);
+        const targetPos = new THREE.Vector3(vehPos.x, vehPos.y + 36, vehPos.z + 0.1);
         camera.position.lerp(targetPos, delta * 5.0);
-        camera.lookAt(bikePos.x, bikePos.y, bikePos.z);
+        camera.lookAt(vehPos.x, vehPos.y, vehPos.z);
       }
 
       // 5. Minimap radar
-      minimap.draw(bikePos, bike.getRotationY());
+      minimap.draw(vehPos, activeVehicle.getRotationY());
 
       // 6. Pass telemetry up to React
-      const speedKmh = bike.getSpeedKmh ? bike.getSpeedKmh() : Math.round(bikeSpeed * 3.6);
+      const speedKmh = activeVehicle.getSpeedKmh ? activeVehicle.getSpeedKmh() : Math.round(vehSpeed * 3.6);
       let gear = 'N';
-      if (bike.speed < -0.5) {
+      if (activeVehicle.speed < -0.5) {
         gear = 'R';
       } else if (speedKmh === 0) {
         gear = 'N';

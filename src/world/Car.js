@@ -19,6 +19,7 @@ export class Car {
         this.steeringAngle = 0;
         this.maxSteeringAngle = 0.55; // radians (~32 degrees)
         this.steerSpeed = 4.0;
+        this.yaw = 0;
         this.driftFriction = 0.82; // Slippery when drifting
 
         this.isBraking = false;
@@ -58,12 +59,12 @@ export class Car {
 
         // 1. Main Chassis (Lower Body)
         const bodyGeo = new THREE.BoxGeometry(1.7, 0.6, 3.1);
-        const bodyMat = new THREE.MeshStandardMaterial({
+        this.bodyMat = new THREE.MeshStandardMaterial({
             color: 0xf97316, // Vibrant Toy Orange
             roughness: 0.35,
             metalness: 0.1
         });
-        const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+        const bodyMesh = new THREE.Mesh(bodyGeo, this.bodyMat);
         bodyMesh.position.y = 0.2;
         bodyMesh.castShadow = true;
         bodyMesh.receiveShadow = true;
@@ -260,6 +261,28 @@ export class Car {
         }, 800);
     }
 
+    setColor(hex) {
+        if (this.bodyMat) {
+            this.bodyMat.color.set(hex);
+            if (this.soundManager) this.soundManager.playPaint();
+        }
+    }
+
+    triggerBoost(duration = 2.5) {
+        this.isBoosting = true;
+        this.speed = Math.max(this.speed, 28);
+        if (this.soundManager) this.soundManager.playBoost();
+
+        clearTimeout(this.boostTimer);
+        this.boostTimer = setTimeout(() => {
+            this.isBoosting = false;
+        }, duration * 1000);
+    }
+
+    boost(mult = 1.4, duration = 2.5) {
+        this.triggerBoost(duration);
+    }
+
     reset() {
         // Reset car completely flat onto the ground facing forward
         this.body.position.set(0, 0.5, 0);
@@ -267,7 +290,9 @@ export class Car {
         this.body.velocity.set(0, 0, 0);
         this.body.angularVelocity.set(0, 0, 0);
         this.speed = 0;
+        this.yaw = 0;
         this.steeringAngle = 0;
+        this.isBoosting = false;
     }
 
     update(controls, delta) {
@@ -278,12 +303,26 @@ export class Car {
 
         this.steeringAngle = THREE.MathUtils.lerp(this.steeringAngle, targetSteer, delta * this.steerSpeed);
 
+        // Turn heading: responsive turning whether driving fast or stopped on grid
+        let turnRate = 0;
+        if (Math.abs(this.speed) > 0.1) {
+            const dir = this.speed >= 0 ? 1 : -1;
+            turnRate = this.steeringAngle * 3.4 * dir;
+        } else if (controls.left || controls.right) {
+            turnRate = this.steeringAngle * 2.4;
+        }
+        this.yaw += turnRate * delta;
+
         // 2. Acceleration / Braking
-        this.isAccelerating = controls.forward;
+        this.isAccelerating = controls.forward || this.isBoosting;
         this.isBraking = controls.brake || controls.backward;
         this.isDrifting = controls.brake && Math.abs(this.speed) > 6;
 
-        if (controls.forward) {
+        if (this.isBoosting) {
+            const boostTopSpeed = 44;
+            this.speed += 55 * delta;
+            if (this.speed > boostTopSpeed) this.speed = boostTopSpeed;
+        } else if (controls.forward) {
             this.speed += this.acceleration * delta;
             if (this.speed > this.maxSpeed) this.speed = this.maxSpeed;
         } else if (controls.backward) {
@@ -304,7 +343,7 @@ export class Car {
             }
         }
 
-        if (controls.brake) {
+        if (controls.brake && !this.isBoosting) {
             this.speed = THREE.MathUtils.lerp(this.speed, 0, delta * 3.5);
             if (this.isDrifting) {
                 this.soundManager.playDrift();
@@ -318,41 +357,21 @@ export class Car {
             this.tailLightMat.emissive.setHex(isStopping ? 0xff0000 : 0x7f1d1d);
         }
 
-        // 4. Strictly enforce upright orientation & horizontal driving (no flip / wheelie)
-        const currentEuler = new THREE.Euler().setFromQuaternion(
-            new THREE.Quaternion(this.body.quaternion.x, this.body.quaternion.y, this.body.quaternion.z, this.body.quaternion.w),
-            'YXZ'
-        );
-        const yaw = currentEuler.y;
+        // 4. Update velocity along forward heading
+        const forwardX = -Math.sin(this.yaw);
+        const forwardZ = -Math.cos(this.yaw);
 
-        // Force pitch & roll to 0 so the car NEVER tilts or stands on its bumper
-        const cleanQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, 0, 'YXZ'));
-        this.body.quaternion.set(cleanQuat.x, cleanQuat.y, cleanQuat.z, cleanQuat.w);
-        this.body.angularVelocity.x = 0;
-        this.body.angularVelocity.z = 0;
-
-        // Forward vector in horizontal plane
-        const forwardX = -Math.sin(yaw);
-        const forwardZ = -Math.cos(yaw);
-
-        // Apply velocity
         this.body.velocity.x = forwardX * this.speed;
         this.body.velocity.z = forwardZ * this.speed;
+        this.body.wakeUp();
 
-        // Steering: rotate car around Y axis
-        if (Math.abs(this.speed) > 0.2) {
-            const dir = this.speed >= 0 ? 1 : -1;
-            this.body.angularVelocity.y = this.steeringAngle * 3.6 * dir;
-        } else if (controls.left || controls.right) {
-            // Stationary steering pivot
-            this.body.angularVelocity.y = this.steeringAngle * 2.0;
-        } else {
-            this.body.angularVelocity.y = 0;
-        }
+        const quatY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
+        this.body.quaternion.set(quatY.x, quatY.y, quatY.z, quatY.w);
+        this.body.angularVelocity.set(0, 0, 0);
 
         // 5. Synchronize Three.js Mesh with Cannon Physics Body
         this.mesh.position.copy(this.body.position);
-        this.mesh.quaternion.copy(this.body.quaternion);
+        this.mesh.quaternion.copy(quatY);
 
         // 6. Animate Wheels
         const wheelTurnSpeed = (this.speed / 0.42) * delta;
@@ -397,8 +416,7 @@ export class Car {
     }
 
     getRotationY() {
-        const euler = new THREE.Euler().setFromQuaternion(this.mesh.quaternion, 'YXZ');
-        return euler.y;
+        return this.yaw;
     }
 
     getSpeedKmh() {

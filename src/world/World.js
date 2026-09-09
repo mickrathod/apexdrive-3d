@@ -9,6 +9,8 @@ import { Collectibles } from './Collectibles.js';
 import { BoostPads } from './BoostPads.js';
 import { BrickWall } from './BrickWall.js';
 import { PaintShop } from './PaintShop.js';
+import { RollerCoaster } from './RollerCoaster.js';
+import { StuntProps } from './StuntProps.js';
 
 export class World {
     constructor(scene, physics, modalManager, soundManager, onScoreUpdate) {
@@ -45,6 +47,16 @@ export class World {
         this.projectsZone = new ProjectsZone(this.scene, this.modalManager);
         this.skillsZone = new SkillsZone(this.scene, this.physics);
         this.contactZone = new ContactZone(this.scene, this.modalManager);
+
+        // 7. Sky Roller Coaster & Stunt Loop
+        this.rollerCoaster = new RollerCoaster(this.scene, this.physics, this.soundManager, this.onScoreUpdate);
+
+        // 8. Destructible Hazard Barrels & Mega Launch Ramps
+        this.stuntProps = new StuntProps(this.scene, this.physics, this.soundManager, (msg) => {
+            if (this.modalManager?.showZoneBanner) {
+                this.modalManager.showZoneBanner(msg);
+            }
+        });
     }
 
     setupLighting() {
@@ -315,12 +327,26 @@ export class World {
         this.projectsZone.checkVehicleInteraction(bikePos);
         this.contactZone.checkVehicleInteraction(bikePos);
 
+        if (this.rollerCoaster) {
+            this.rollerCoaster.update(bike, delta, (msg) => {
+                if (this.modalManager?.showZoneBanner) {
+                    this.modalManager.showZoneBanner(`🚀 ${msg}`);
+                }
+            });
+        }
+        if (this.stuntProps) {
+            this.stuntProps.update(delta);
+        }
+
         // Check which zone player is in and trigger banner notification
         if (bikePos) {
             const x = bikePos.x;
+            const y = bikePos.y;
             const z = bikePos.z;
 
-            if (x < -20 && z < -20) {
+            if (y > 6.0 || (x < -15 && z < -50)) {
+                this.modalManager.showZoneBanner('🎢 SKY ROLLER COASTER & DROP');
+            } else if (x < -20 && z < -20) {
                 this.modalManager.showZoneBanner('⚡ STUNT & PHYSICS ARENA');
             } else if (x > 20 && z < -20) {
                 this.modalManager.showZoneBanner('💼 FEATURED PROJECTS ZONE');

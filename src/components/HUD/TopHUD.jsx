@@ -13,6 +13,7 @@ export const TopHUD = ({
   onAboutClick,
   onContactClick,
   onCameraToggle,
+  onSwitchVehicle,
   onResetCar,
   onMuteToggle
 }) => {
@@ -54,8 +55,15 @@ export const TopHUD = ({
         </button>
         <button
           className="hud-btn"
+          onClick={onSwitchVehicle}
+          title="Switch Bike / Car [V]"
+        >
+          🏎️/🏍️ Vehicle <kbd>[V]</kbd>
+        </button>
+        <button
+          className="hud-btn"
           onClick={onResetCar}
-          title="Reset Bike Upright [R]"
+          title="Reset Vehicle Upright [R]"
         >
           🔄 Reset <kbd>[R]</kbd>
         </button>

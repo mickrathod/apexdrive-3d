@@ -14,7 +14,8 @@ export class Minimap {
 
         // Color coded zone markers on map
         this.zones = [
-            { name: 'STUNTS', x: -45, z: -45, color: '#f59e0b', r: 18 },
+            { name: 'STUNTS', x: -45, z: -35, color: '#f59e0b', r: 16 },
+            { name: '🎢 COASTER', x: -45, z: -65, color: '#06b6d4', r: 20 },
             { name: 'PROJECTS', x: 45, z: -45, color: '#3b82f6', r: 20 },
             { name: 'SKILLS', x: 45, z: 45, color: '#10b981', r: 18 },
             { name: 'CONTACT', x: -45, z: 45, color: '#8b5cf6', r: 16 },

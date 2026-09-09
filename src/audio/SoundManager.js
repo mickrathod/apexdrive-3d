@@ -254,10 +254,174 @@ export class SoundManager {
         noise.start(now);
     }
 
+    startPoliceSiren() {
+        if (!this.ctx || this.isMuted || this.sirenOsc) return;
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        const now = this.ctx.currentTime;
+
+        // Siren Oscillator (Dual-tone wail)
+        this.sirenOsc = this.ctx.createOscillator();
+        this.sirenOsc.type = 'sawtooth';
+        this.sirenOsc.frequency.setValueAtTime(650, now);
+
+        // LFO for wailing pitch modulation
+        this.sirenLfo = this.ctx.createOscillator();
+        this.sirenLfo.frequency.setValueAtTime(1.8, now); // ~1.8 Hz wail cycle
+        const lfoGain = this.ctx.createGain();
+        lfoGain.gain.setValueAtTime(280, now); // swing between 650-930 Hz
+
+        this.sirenLfo.connect(this.sirenOsc.frequency);
+
+        // Bandpass filter for authentic megaphone siren character
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(900, now);
+        filter.Q.setValueAtTime(2.5, now);
+
+        this.sirenGain = this.ctx.createGain();
+        this.sirenGain.gain.setValueAtTime(0.001, now);
+        this.sirenGain.gain.linearRampToValueAtTime(0.045, now + 0.3);
+
+        this.sirenOsc.connect(filter);
+        filter.connect(this.sirenGain);
+        this.sirenGain.connect(this.ctx.destination);
+
+        this.sirenLfo.start(now);
+        this.sirenOsc.start(now);
+    }
+
+    setSirenVolume(vol) {
+        if (this.sirenGain && this.ctx && !this.isMuted) {
+            const clamped = Math.max(0, Math.min(0.06, vol * 0.05));
+            this.sirenGain.gain.setTargetAtTime(clamped, this.ctx.currentTime, 0.1);
+        }
+    }
+
+    stopPoliceSiren() {
+        if (!this.sirenOsc || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        if (this.sirenGain) {
+            this.sirenGain.gain.setTargetAtTime(0.0001, now, 0.2);
+        }
+        setTimeout(() => {
+            if (this.sirenOsc) {
+                try {
+                    this.sirenOsc.stop();
+                    this.sirenLfo?.stop();
+                    this.sirenOsc.disconnect();
+                } catch {
+                    // ignore
+                }
+                this.sirenOsc = null;
+                this.sirenLfo = null;
+                this.sirenGain = null;
+            }
+        }, 250);
+    }
+
+    playPoliceRadioChirp() {
+        if (!this.ctx || this.isMuted) return;
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        const now = this.ctx.currentTime;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(1450, now);
+        osc.frequency.setValueAtTime(1150, now + 0.05);
+
+        gain.gain.setValueAtTime(0.04, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.13);
+    }
+
+    playExplosion() {
+        if (!this.ctx || this.isMuted) return;
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        const now = this.ctx.currentTime;
+
+        // Sub thud
+        const osc = this.ctx.createOscillator();
+        const oscGain = this.ctx.createGain();
+        osc.frequency.setValueAtTime(120, now);
+        osc.frequency.exponentialRampToValueAtTime(30, now + 0.4);
+        oscGain.gain.setValueAtTime(0.08, now);
+        oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+        osc.connect(oscGain);
+        oscGain.connect(this.ctx.destination);
+
+        // Noise crackle
+        const bufferSize = this.ctx.sampleRate * 0.4;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(800, now);
+        filter.frequency.exponentialRampToValueAtTime(100, now + 0.35);
+
+        const noiseGain = this.ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.07, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(this.ctx.destination);
+
+        osc.start(now);
+        noise.start(now);
+        osc.stop(now + 0.5);
+    }
+
+    playCoasterWhoosh() {
+        if (!this.ctx || this.isMuted) return;
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        const now = this.ctx.currentTime;
+
+        const bufferSize = this.ctx.sampleRate * 0.6;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(300, now);
+        filter.frequency.exponentialRampToValueAtTime(1400, now + 0.3);
+        filter.frequency.exponentialRampToValueAtTime(250, now + 0.6);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.05, now + 0.25);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        noise.start(now);
+    }
+
     toggleMute() {
         this.isMuted = !this.isMuted;
         if (this.engineGain) {
             this.engineGain.gain.setValueAtTime(this.isMuted ? 0 : 0.04, this.ctx?.currentTime || 0);
+        }
+        if (this.sirenGain) {
+            this.sirenGain.gain.setValueAtTime(this.isMuted ? 0 : 0.045, this.ctx?.currentTime || 0);
         }
         return this.isMuted;
     }

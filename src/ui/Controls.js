@@ -13,6 +13,7 @@ export class Controls {
         this.onReset = null;
         this.onHorn = null;
         this.onToggleCamera = null;
+        this.onSwitchVehicle = null;
         this.onInteract = null;
 
         this.initKeyboard();
@@ -65,6 +66,9 @@ export class Controls {
                     break;
                 case 'KeyC':
                     if (this.onToggleCamera) this.onToggleCamera();
+                    break;
+                case 'KeyV':
+                    if (this.onSwitchVehicle) this.onSwitchVehicle();
                     break;
             }
         });

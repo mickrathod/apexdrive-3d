@@ -63,6 +63,12 @@ export function App() {
     }
   };
 
+  const handleSwitchVehicle = () => {
+    if (engineRef.current?.switchVehicle) {
+      engineRef.current.switchVehicle();
+    }
+  };
+
   const handleAboutClick = () => {
     setActiveModal({ type: 'about' });
   };
@@ -91,6 +97,7 @@ export function App() {
         onAboutClick={handleAboutClick}
         onContactClick={handleContactClick}
         onCameraToggle={handleCameraToggle}
+        onSwitchVehicle={handleSwitchVehicle}
         onResetCar={handleResetCar}
         onMuteToggle={handleMuteToggle}
       />

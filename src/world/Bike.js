@@ -20,6 +20,7 @@ export class Bike {
         this.steeringAngle = 0;
         this.maxSteeringAngle = 0.58; // radians
         this.steerSpeed = 5.0;
+        this.yaw = 0; // Current heading angle (radians)
 
         // Dynamic visual banking / motorcycle lean
         this.leanAngle = 0;
@@ -357,6 +358,7 @@ export class Bike {
         this.body.velocity.set(0, 0, 0);
         this.body.angularVelocity.set(0, 0, 0);
         this.speed = 0;
+        this.yaw = 0;
         this.steeringAngle = 0;
         this.leanAngle = 0;
         this.isBoosting = false;
@@ -370,10 +372,21 @@ export class Bike {
 
         this.steeringAngle = THREE.MathUtils.lerp(this.steeringAngle, targetSteer, delta * this.steerSpeed);
 
+        // Heading: turn whether driving fast or stopped on grid
+        let turnRate = 0;
+        if (Math.abs(this.speed) > 0.1) {
+            const dir = this.speed >= 0 ? 1 : -1;
+            turnRate = this.steeringAngle * 3.4 * dir;
+        } else if (controls.left || controls.right) {
+            // Stationary pivot turn so bike never gets stuck
+            turnRate = this.steeringAngle * 2.6;
+        }
+        this.yaw += turnRate * delta;
+
         // Bank into the turn when moving forward (authentic motorcycle lean)
         const speedRatio = Math.min(Math.abs(this.speed) / 15, 1.0);
         const targetLean = -this.steeringAngle * this.maxLean * speedRatio * (this.speed >= 0 ? 1 : -0.5);
-        this.leanAngle = THREE.MathUtils.lerp(this.leanAngle, targetLean, delta * 7.0);
+        this.leanAngle = THREE.MathUtils.lerp(this.leanAngle, targetLean, delta * 8.0);
         this.leanGroup.rotation.z = this.leanAngle;
 
         // Visual handlebar & front fork steering
@@ -385,7 +398,7 @@ export class Bike {
         this.isDrifting = controls.brake && Math.abs(this.speed) > 6;
 
         if (this.isBoosting) {
-            const boostTopSpeed = 46;
+            const boostTopSpeed = 48;
             this.speed += 60 * delta;
             if (this.speed > boostTopSpeed) this.speed = boostTopSpeed;
 
@@ -427,61 +440,24 @@ export class Bike {
             this.tailLightMat.emissive.setHex(isStopping ? 0xff0000 : 0x7f1d1d);
         }
 
-        // 4. Strictly upright physics body (X & Z pitch/roll locked to 0)
-        const currentEuler = new THREE.Euler().setFromQuaternion(
-            new THREE.Quaternion(this.body.quaternion.x, this.body.quaternion.y, this.body.quaternion.z, this.body.quaternion.w),
-            'YXZ'
-        );
-        const yaw = currentEuler.y;
-
-        const cleanQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, 0, 'YXZ'));
-        this.body.quaternion.set(cleanQuat.x, cleanQuat.y, cleanQuat.z, cleanQuat.w);
-        this.body.angularVelocity.x = 0;
-        this.body.angularVelocity.z = 0;
-
-        // Forward vector in horizontal plane
-        const forwardX = -Math.sin(yaw);
-        const forwardZ = -Math.cos(yaw);
-
-        // Traction falloff: at high speed + hard steering, the rear tire
-        // loses a bit of grip so tight high-speed turns feel like a real
-        // slide instead of pivoting on rails. Below ~half top speed there's
-        // no falloff at all - low-speed turning stays precise.
-        const speedForGrip = Math.abs(this.speed);
-        const highSpeedRatio = THREE.MathUtils.clamp((speedForGrip - this.maxSpeed * 0.5) / (this.maxSpeed * 0.5), 0, 1);
-        const steerInput = Math.abs(this.steeringAngle) / this.maxSteeringAngle;
-        const traction = 1 - highSpeedRatio * steerInput * 0.35;
+        // 4. Update velocity along forward heading
+        const forwardX = -Math.sin(this.yaw);
+        const forwardZ = -Math.cos(this.yaw);
 
         this.body.velocity.x = forwardX * this.speed;
         this.body.velocity.z = forwardZ * this.speed;
 
-        // Steering: rotate bike around Y axis, scaled by available traction
-        // and eased in/out so direction changes feel weighted rather than
-        // snapping instantly to the target turn rate every frame.
-        let targetAngularY = 0;
-        if (Math.abs(this.speed) > 0.2) {
-            const dir = this.speed >= 0 ? 1 : -1;
-            targetAngularY = this.steeringAngle * 3.8 * dir * traction;
-        } else if (controls.left || controls.right) {
-            targetAngularY = this.steeringAngle * 2.2;
-        }
-        this.body.angularVelocity.y = THREE.MathUtils.lerp(this.body.angularVelocity.y, targetAngularY, delta * 12);
+        // Wake physics body so it never freezes
+        this.body.wakeUp();
 
-        // Light rear-end slide during high-speed traction loss - nudges the
-        // bike sideways along its own local X axis, purely cosmetic drift
-        // rather than a real skid, but reads as the tire stepping out.
-        if (traction < 1) {
-            const slip = (1 - traction) * speedForGrip * 0.4;
-            const sideX = Math.cos(yaw);
-            const sideZ = -Math.sin(yaw);
-            const slipSign = this.steeringAngle >= 0 ? 1 : -1;
-            this.body.velocity.x += sideX * slip * slipSign;
-            this.body.velocity.z += sideZ * slip * slipSign;
-        }
+        // Strictly upright yaw quaternion (no accidental roll or pitch)
+        const quatY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
+        this.body.quaternion.set(quatY.x, quatY.y, quatY.z, quatY.w);
+        this.body.angularVelocity.set(0, 0, 0);
 
         // 5. Sync Mesh with Physics Body
         this.mesh.position.copy(this.body.position);
-        this.mesh.quaternion.copy(this.body.quaternion);
+        this.mesh.quaternion.copy(quatY);
 
         // 6. Animate Wheels Rotation
         const wheelRotSpeed = (this.speed / 0.45) * delta;
@@ -520,8 +496,7 @@ export class Bike {
     }
 
     getRotationY() {
-        const euler = new THREE.Euler().setFromQuaternion(this.mesh.quaternion, 'YXZ');
-        return euler.y;
+        return this.yaw;
     }
 
     getSpeedKmh() {
