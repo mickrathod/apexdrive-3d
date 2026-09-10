@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
+import { loadGLTF } from '../loaders/modelLoader.js';
 
 /**
- * 3D Toy Vehicle with Arcade Physics & Dynamic Lighting
+ * 3D Sports Car with Real Official Three.js Ferrari 458 GLTF Model & Arcade Physics
  */
 export class Car {
     constructor(scene, physics, soundManager) {
@@ -11,201 +12,139 @@ export class Car {
         this.soundManager = soundManager;
 
         this.speed = 0;
-        this.maxSpeed = 26;
+        this.maxSpeed = 28;
         this.maxReverseSpeed = -10;
-        this.acceleration = 38;
+        this.acceleration = 40;
         this.deceleration = 16;
         this.brakingForce = 45;
         this.steeringAngle = 0;
         this.maxSteeringAngle = 0.55; // radians (~32 degrees)
         this.steerSpeed = 4.0;
         this.yaw = 0;
-        this.driftFriction = 0.82; // Slippery when drifting
+        this.driftFriction = 0.82;
 
         this.isBraking = false;
         this.isDrifting = false;
         this.isAccelerating = false;
 
-        this.wheels = [];
         this.particles = [];
 
         this.createPhysicsBody();
         this.createVisualMesh();
-        this.createHeadlights();
+        this.loadRealFerrari();
         this.createParticleSystem();
         this.createHornPopup();
     }
 
     createPhysicsBody() {
-        // Main vehicle chassis box with rounded/elevated collision bounds
-        const chassisShape = new CANNON.Box(new CANNON.Vec3(0.85, 0.3, 1.45));
+        // Physical chassis bounding box
+        const chassisShape = new CANNON.Box(new CANNON.Vec3(0.9, 0.35, 1.6));
         this.body = new CANNON.Body({
             mass: 140,
             material: this.physics.carMaterial,
             shape: chassisShape,
-            position: new CANNON.Vec3(0, 0.5, 0), // Starts flat and stable on the ground
+            position: new CANNON.Vec3(0, 0.45, 0),
             linearDamping: 0.05,
             angularDamping: 0.9
         });
 
-        // STRICTLY LOCK pitch (X) and roll (Z) so car NEVER wheelies or flips upright!
+        // Strictly lock pitch (X) and roll (Z) so vehicle drives smoothly on ground
         this.body.angularFactor.set(0, 1, 0);
-
         this.physics.world.addBody(this.body);
     }
 
     createVisualMesh() {
         this.mesh = new THREE.Group();
-
-        // 1. Main Chassis (Lower Body)
-        const bodyGeo = new THREE.BoxGeometry(1.7, 0.6, 3.1);
-        this.bodyMat = new THREE.MeshStandardMaterial({
-            color: 0xf97316, // Vibrant Toy Orange
-            roughness: 0.35,
-            metalness: 0.1
-        });
-        const bodyMesh = new THREE.Mesh(bodyGeo, this.bodyMat);
-        bodyMesh.position.y = 0.2;
-        bodyMesh.castShadow = true;
-        bodyMesh.receiveShadow = true;
-        this.mesh.add(bodyMesh);
-
-        // White racing stripe
-        const stripeGeo = new THREE.BoxGeometry(0.4, 0.62, 3.12);
-        const stripeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
-        const stripe = new THREE.Mesh(stripeGeo, stripeMat);
-        stripe.position.y = 0.2;
-        this.mesh.add(stripe);
-
-        // 2. Cabin & Windshield
-        const cabinGeo = new THREE.BoxGeometry(1.35, 0.65, 1.5);
-        const cabinMat = new THREE.MeshStandardMaterial({
-            color: 0x1e293b,
-            roughness: 0.1,
-            metalness: 0.2
-        });
-        const cabinMesh = new THREE.Mesh(cabinGeo, cabinMat);
-        cabinMesh.position.set(0, 0.75, -0.15);
-        cabinMesh.castShadow = true;
-        this.mesh.add(cabinMesh);
-
-        // Front Windshield Glass
-        const glassGeo = new THREE.PlaneGeometry(1.2, 0.5);
-        const glassMat = new THREE.MeshStandardMaterial({
-            color: 0x38bdf8,
-            roughness: 0.1,
-            metalness: 0.8,
-            transparent: true,
-            opacity: 0.85
-        });
-        const glassFront = new THREE.Mesh(glassGeo, glassMat);
-        glassFront.position.set(0, 0.76, -0.91);
-        this.mesh.add(glassFront);
-
-        // 3. Rear Spoiler
-        const spoilerWingGeo = new THREE.BoxGeometry(1.6, 0.08, 0.35);
-        const spoilerMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4 });
-        const spoilerWing = new THREE.Mesh(spoilerWingGeo, spoilerMat);
-        spoilerWing.position.set(0, 0.95, 1.35);
-        spoilerWing.castShadow = true;
-        this.mesh.add(spoilerWing);
-
-        const postGeo = new THREE.BoxGeometry(0.08, 0.4, 0.1);
-        const postL = new THREE.Mesh(postGeo, spoilerMat);
-        postL.position.set(-0.55, 0.75, 1.35);
-        const postR = new THREE.Mesh(postGeo, spoilerMat);
-        postR.position.set(0.55, 0.75, 1.35);
-        this.mesh.add(postL);
-        this.mesh.add(postR);
-
-        // 4. Wheels Setup (4 wheels)
-        const wheelGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.36, 24);
-        wheelGeo.rotateZ(Math.PI / 2); // Rotate cylinder to face sideways
-
-        const tireMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.85 });
-        const rimMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.6, roughness: 0.3 });
-
-        const wheelPositions = [
-            { x: -0.95, y: -0.15, z: -1.0, isFront: true },  // Front Left
-            { x: 0.95, y: -0.15, z: -1.0, isFront: true },   // Front Right
-            { x: -0.95, y: -0.15, z: 1.0, isFront: false },  // Rear Left
-            { x: 0.95, y: -0.15, z: 1.0, isFront: false }    // Rear Right
-        ];
-
-        this.wheels = wheelPositions.map((pos) => {
-            const pivotGroup = new THREE.Group();
-            pivotGroup.position.set(pos.x, pos.y, pos.z);
-
-            const wheelMesh = new THREE.Mesh(wheelGeo, tireMat);
-            wheelMesh.castShadow = true;
-
-            // Hubcap
-            const rimGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.38, 16);
-            rimGeo.rotateZ(Math.PI / 2);
-            const rimMesh = new THREE.Mesh(rimGeo, rimMat);
-            wheelMesh.add(rimMesh);
-
-            pivotGroup.add(wheelMesh);
-            this.mesh.add(pivotGroup);
-
-            return {
-                pivot: pivotGroup,
-                mesh: wheelMesh,
-                isFront: pos.isFront,
-                rotationAngle: 0
-            };
-        });
-
-        // 5. Tail / Brake Lights
-        const tailLightGeo = new THREE.BoxGeometry(0.3, 0.12, 0.05);
-        this.tailLightMat = new THREE.MeshStandardMaterial({
-            color: 0x7f1d1d,
-            emissive: 0xef4444,
-            emissiveIntensity: 0.2
-        });
-
-        const tailL = new THREE.Mesh(tailLightGeo, this.tailLightMat);
-        tailL.position.set(-0.6, 0.25, 1.56);
-        const tailR = new THREE.Mesh(tailLightGeo, this.tailLightMat);
-        tailR.position.set(0.6, 0.25, 1.56);
-        this.mesh.add(tailL);
-        this.mesh.add(tailR);
-
         this.scene.add(this.mesh);
     }
 
-    createHeadlights() {
-        // Headlight lenses
-        const lensGeo = new THREE.BoxGeometry(0.32, 0.15, 0.05);
-        const lensMat = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            emissive: 0xfffbeb,
-            emissiveIntensity: 1.5
+    loadRealFerrari() {
+        loadGLTF('/models/ferrari.glb').then((gltf) => {
+            const carModel = gltf.scene.children[0];
+
+            // Scale and center Ferrari cleanly over physics collision body
+            carModel.scale.setScalar(0.85);
+
+            // Measure dimensions to ensure wheels sit flush with the road
+            const bbox = new THREE.Box3().setFromObject(carModel);
+            const center = new THREE.Vector3();
+            bbox.getCenter(center);
+
+            // Center X and Z cleanly over chassis
+            carModel.position.x = -center.x;
+            carModel.position.z = -center.z;
+
+            // Chassis half-height is 0.35, so chassis rests on ground (y=0) at y=0.35.
+            // Road surface is at y=0.02. Align bottom of tires exactly flush with road.
+            const targetRoadY = 0.025;
+            carModel.position.y = targetRoadY - 0.35 - bbox.min.y;
+
+            // Official Three.js car materials from webgl_materials_car
+            const bodyMaterial = new THREE.MeshPhysicalMaterial({
+                color: 0xef4444, // Rosso Corsa
+                metalness: 0.9,
+                roughness: 0.22,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.03
+            });
+
+            const detailsMaterial = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                metalness: 0.95,
+                roughness: 0.15
+            });
+
+            const trimMaterial = new THREE.MeshStandardMaterial({
+                color: 0x111827,
+                metalness: 0.8,
+                roughness: 0.35
+            });
+
+            const glassMaterial = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                metalness: 0.1,
+                roughness: 0,
+                transmission: 0.92,
+                transparent: true,
+                opacity: 0.85
+            });
+
+            const bodyObj = carModel.getObjectByName('body');
+            if (bodyObj) bodyObj.material = bodyMaterial;
+
+            ['rim_fl', 'rim_fr', 'rim_rl', 'rim_rr'].forEach((name) => {
+                const rim = carModel.getObjectByName(name);
+                if (rim) rim.material = detailsMaterial;
+            });
+
+            const trimObj = carModel.getObjectByName('trim');
+            if (trimObj) trimObj.material = trimMaterial;
+
+            const glassObj = carModel.getObjectByName('glass');
+            if (glassObj) glassObj.material = glassMaterial;
+
+            carModel.traverse((c) => {
+                if (c.isMesh) {
+                    c.castShadow = true;
+                    c.receiveShadow = true;
+                }
+            });
+
+            // Store animated wheel nodes
+            this.wheelFL = carModel.getObjectByName('wheel_fl');
+            this.wheelFR = carModel.getObjectByName('wheel_fr');
+            this.wheelRL = carModel.getObjectByName('wheel_rl');
+            this.wheelRR = carModel.getObjectByName('wheel_rr');
+            this.steeringWheelNode = carModel.getObjectByName('steering_wheel');
+
+            this.mesh.add(carModel);
+            this.carModel = carModel;
+        }).catch((err) => {
+            console.error('Error loading Ferrari 3D model:', err);
         });
-
-        const lensL = new THREE.Mesh(lensGeo, lensMat);
-        lensL.position.set(-0.6, 0.25, -1.56);
-        const lensR = new THREE.Mesh(lensGeo, lensMat);
-        lensR.position.set(0.6, 0.25, -1.56);
-        this.mesh.add(lensL);
-        this.mesh.add(lensR);
-
-        // Real-time SpotLight Cones casting light on the ground
-        this.spotL = new THREE.SpotLight(0xfff7ed, 3.5, 30, Math.PI / 7, 0.4, 1.2);
-        this.spotL.position.set(-0.6, 0.35, -1.6);
-        this.spotL.target.position.set(-0.6, 0, -15);
-        this.mesh.add(this.spotL);
-        this.mesh.add(this.spotL.target);
-
-        this.spotR = new THREE.SpotLight(0xfff7ed, 3.5, 30, Math.PI / 7, 0.4, 1.2);
-        this.spotR.position.set(0.6, 0.35, -1.6);
-        this.spotR.target.position.set(0.6, 0, -15);
-        this.mesh.add(this.spotR);
-        this.mesh.add(this.spotR.target);
     }
 
     createParticleSystem() {
-        // Particle puff geometry
         this.particleGeo = new THREE.DodecahedronGeometry(0.18, 0);
         this.particleMat = new THREE.MeshBasicMaterial({
             color: 0xe2e8f0,
@@ -215,101 +154,146 @@ export class Car {
     }
 
     spawnDriftPuff(pos) {
-        if (this.particles.length > 35) return;
+        if (this.particles.length > 25) return;
 
         const p = new THREE.Mesh(this.particleGeo, this.particleMat.clone());
         p.position.copy(pos);
         p.position.y += (Math.random() - 0.5) * 0.1;
-        p.scale.setScalar(Math.random() * 0.5 + 0.6);
+        p.scale.setScalar(Math.random() * 0.6 + 0.4);
 
         this.scene.add(p);
         this.particles.push({
             mesh: p,
             life: 1.0,
-            velY: Math.random() * 0.8 + 0.3
+            velY: Math.random() * 0.6 + 0.3
+        });
+    }
+
+    spawnNitroFlame(pos) {
+        const flameGeo = new THREE.SphereGeometry(0.16, 8, 8);
+        const flameMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.9 });
+        const flame = new THREE.Mesh(flameGeo, flameMat);
+        flame.position.copy(pos);
+        flame.position.x += (Math.random() - 0.5) * 0.2;
+        flame.position.z += (Math.random() - 0.5) * 0.2;
+        this.scene.add(flame);
+
+        this.particles.push({
+            mesh: flame,
+            life: 0.35,
+            velY: Math.random() * 0.5
         });
     }
 
     createHornPopup() {
-        // 3D Cartoon Horn Badge
         const canvas = document.createElement('canvas');
         canvas.width = 256;
         canvas.height = 128;
         const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#f59e0b';
-        ctx.font = 'bold 54px Impact, sans-serif';
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath();
+        ctx.roundRect(10, 10, 236, 108, 20);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 44px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('BEEP! 📯', 128, 64);
+        ctx.fillText('📢 BEEP!', 128, 64);
 
         const tex = new THREE.CanvasTexture(canvas);
-        const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true });
-        this.hornSprite = new THREE.Sprite(spriteMat);
-        this.hornSprite.scale.set(3, 1.5, 1);
-        this.hornSprite.visible = false;
+        const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0 });
+        this.hornSprite = new THREE.Sprite(mat);
+        this.hornSprite.scale.set(2.4, 1.2, 1);
+        this.hornSprite.position.set(0, 2.2, 0);
         this.mesh.add(this.hornSprite);
     }
 
     honk() {
         this.soundManager.playHorn();
-        this.hornSprite.position.set(0, 2.2, 0);
-        this.hornSprite.visible = true;
-
-        clearTimeout(this.hornTimer);
-        this.hornTimer = setTimeout(() => {
-            this.hornSprite.visible = false;
-        }, 800);
+        if (this.hornSprite) {
+            this.hornSprite.material.opacity = 1.0;
+            setTimeout(() => {
+                if (this.hornSprite) this.hornSprite.material.opacity = 0;
+            }, 800);
+        }
     }
 
-    setColor(hex) {
-        if (this.bodyMat) {
-            this.bodyMat.color.set(hex);
-            if (this.soundManager) this.soundManager.playPaint();
+    activate(pos, yaw = 0, speed = 0) {
+        this.mesh.visible = true;
+
+        const posX = (pos && Number.isFinite(pos.x)) ? pos.x : 0;
+        const posZ = (pos && Number.isFinite(pos.z)) ? pos.z : 0;
+
+        // Ensure body is in physics simulation
+        if (!this.physics.world.bodies.includes(this.body)) {
+            this.physics.world.addBody(this.body);
+        }
+
+        this.body.position.set(posX, 0.45, posZ);
+        this.body.velocity.set(0, 0, 0);
+        this.body.angularVelocity.set(0, 0, 0);
+        this.yaw = Number.isFinite(yaw) ? yaw : 0;
+        this.speed = Number.isFinite(speed) ? speed : 0;
+        this.steeringAngle = 0;
+
+        this.mesh.position.copy(this.body.position);
+        const quatY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
+        this.mesh.quaternion.copy(quatY);
+        this.body.quaternion.set(quatY.x, quatY.y, quatY.z, quatY.w);
+        this.body.wakeUp();
+    }
+
+    deactivate() {
+        this.mesh.visible = false;
+        this.body.velocity.set(0, 0, 0);
+        this.body.angularVelocity.set(0, 0, 0);
+        if (this.physics.world.bodies.includes(this.body)) {
+            this.physics.world.removeBody(this.body);
         }
     }
 
     triggerBoost(duration = 2.5) {
         this.isBoosting = true;
-        this.speed = Math.max(this.speed, 28);
-        if (this.soundManager) this.soundManager.playBoost();
-
-        clearTimeout(this.boostTimer);
-        this.boostTimer = setTimeout(() => {
+        this.soundManager.playBoost();
+        if (this.boostTimeout) clearTimeout(this.boostTimeout);
+        this.boostTimeout = setTimeout(() => {
             this.isBoosting = false;
         }, duration * 1000);
     }
 
-    boost(mult = 1.4, duration = 2.5) {
-        this.triggerBoost(duration);
+    setColor(hex) {
+        if (this.carModel) {
+            const bodyObj = this.carModel.getObjectByName('body');
+            if (bodyObj && bodyObj.material && bodyObj.material.color) {
+                bodyObj.material.color.set(hex);
+            }
+        }
     }
 
     reset() {
-        // Reset car completely flat onto the ground facing forward
-        this.body.position.set(0, 0.5, 0);
-        this.body.quaternion.set(0, 0, 0, 1);
+        this.body.position.set(0, 0.45, 0);
         this.body.velocity.set(0, 0, 0);
         this.body.angularVelocity.set(0, 0, 0);
-        this.speed = 0;
         this.yaw = 0;
+        this.speed = 0;
         this.steeringAngle = 0;
-        this.isBoosting = false;
+        this.body.wakeUp();
     }
 
     update(controls, delta) {
-        // 1. Steering Calculation
-        let targetSteer = 0;
-        if (controls.left) targetSteer += this.maxSteeringAngle;
-        if (controls.right) targetSteer -= this.maxSteeringAngle;
+        // 1. Steering
+        let targetSteering = 0;
+        if (controls.left) targetSteering = this.maxSteeringAngle;
+        if (controls.right) targetSteering = -this.maxSteeringAngle;
 
-        this.steeringAngle = THREE.MathUtils.lerp(this.steeringAngle, targetSteer, delta * this.steerSpeed);
+        this.steeringAngle = THREE.MathUtils.lerp(this.steeringAngle, targetSteering, delta * this.steerSpeed);
 
-        // Turn heading: responsive turning whether driving fast or stopped on grid
         let turnRate = 0;
-        if (Math.abs(this.speed) > 0.1) {
+        if (Math.abs(this.speed) > 0.3) {
             const dir = this.speed >= 0 ? 1 : -1;
             turnRate = this.steeringAngle * 3.4 * dir;
         } else if (controls.left || controls.right) {
-            turnRate = this.steeringAngle * 2.4;
+            turnRate = this.steeringAngle * 2.5;
         }
         this.yaw += turnRate * delta;
 
@@ -319,7 +303,7 @@ export class Car {
         this.isDrifting = controls.brake && Math.abs(this.speed) > 6;
 
         if (this.isBoosting) {
-            const boostTopSpeed = 44;
+            const boostTopSpeed = 46;
             this.speed += 55 * delta;
             if (this.speed > boostTopSpeed) this.speed = boostTopSpeed;
         } else if (controls.forward) {
@@ -327,15 +311,12 @@ export class Car {
             if (this.speed > this.maxSpeed) this.speed = this.maxSpeed;
         } else if (controls.backward) {
             if (this.speed > 0.5) {
-                // Braking while moving forward
                 this.speed -= this.brakingForce * delta;
             } else {
-                // Reversing
                 this.speed -= this.acceleration * 0.7 * delta;
                 if (this.speed < this.maxReverseSpeed) this.speed = this.maxReverseSpeed;
             }
         } else {
-            // Natural friction coasting
             if (this.speed > 0) {
                 this.speed = Math.max(0, this.speed - this.deceleration * delta);
             } else if (this.speed < 0) {
@@ -350,14 +331,7 @@ export class Car {
             }
         }
 
-        // 3. Tail Light Intensity based on braking
-        if (this.tailLightMat) {
-            const isStopping = controls.brake || (controls.backward && this.speed > 0);
-            this.tailLightMat.emissiveIntensity = isStopping ? 2.5 : 0.25;
-            this.tailLightMat.emissive.setHex(isStopping ? 0xff0000 : 0x7f1d1d);
-        }
-
-        // 4. Update velocity along forward heading
+        // 3. Update velocity along forward heading
         const forwardX = -Math.sin(this.yaw);
         const forwardZ = -Math.cos(this.yaw);
 
@@ -369,29 +343,48 @@ export class Car {
         this.body.quaternion.set(quatY.x, quatY.y, quatY.z, quatY.w);
         this.body.angularVelocity.set(0, 0, 0);
 
-        // 5. Synchronize Three.js Mesh with Cannon Physics Body
+        // Anti-NaN & Anti-void safety check: prevent car from ever corrupting coordinates
+        if (!Number.isFinite(this.body.position.x) || !Number.isFinite(this.body.position.y) || !Number.isFinite(this.body.position.z)) {
+            this.body.position.set(0, 0.45, 0);
+            this.body.velocity.set(0, 0, 0);
+            this.body.angularVelocity.set(0, 0, 0);
+        } else if (this.body.position.y < 0.2) {
+            this.body.position.y = 0.45;
+            this.body.velocity.y = Math.max(0, this.body.velocity.y);
+        }
+
+        // 4. Synchronize Mesh position with Cannon Physics Body
         this.mesh.position.copy(this.body.position);
         this.mesh.quaternion.copy(quatY);
 
-        // 6. Animate Wheels
-        const wheelTurnSpeed = (this.speed / 0.42) * delta;
-        for (const w of this.wheels) {
-            w.rotationAngle -= wheelTurnSpeed;
-            w.mesh.rotation.x = w.rotationAngle;
+        // 5. Animate Real Three.js Ferrari Wheels & Steering Wheel
+        if (this.carModel) {
+            const wheelRotSpeed = (this.speed / 0.35) * delta;
 
-            if (w.isFront) {
-                w.pivot.rotation.y = this.steeringAngle;
+            if (this.wheelFL) {
+                this.wheelFL.rotation.x -= wheelRotSpeed;
+                this.wheelFL.rotation.y = this.steeringAngle;
+            }
+            if (this.wheelFR) {
+                this.wheelFR.rotation.x -= wheelRotSpeed;
+                this.wheelFR.rotation.y = this.steeringAngle;
+            }
+            if (this.wheelRL) this.wheelRL.rotation.x -= wheelRotSpeed;
+            if (this.wheelRR) this.wheelRR.rotation.x -= wheelRotSpeed;
+
+            if (this.steeringWheelNode) {
+                this.steeringWheelNode.rotation.z = -this.steeringAngle * 2.2;
             }
 
-            // Spawn drift puffs from rear wheels
-            if (this.isDrifting && !w.isFront && Math.random() > 0.4) {
+            // Drift tire smoke from rear wheels
+            if (this.isDrifting && this.wheelRL && Math.random() > 0.4) {
                 const worldPos = new THREE.Vector3();
-                w.mesh.getWorldPosition(worldPos);
+                this.wheelRL.getWorldPosition(worldPos);
                 this.spawnDriftPuff(worldPos);
             }
         }
 
-        // 7. Update Particles
+        // 6. Update Particles
         for (let i = this.particles.length - 1; i >= 0; i--) {
             const p = this.particles[i];
             p.life -= delta * 2.2;
@@ -407,7 +400,7 @@ export class Car {
             }
         }
 
-        // 8. Update Engine Audio
+        // 7. Update Engine Audio
         this.soundManager.updateEngine(this.speed, this.isAccelerating);
     }
 

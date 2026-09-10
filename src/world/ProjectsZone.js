@@ -2,65 +2,65 @@ import * as THREE from 'three';
 
 export const PROJECTS_DATA = [
     {
-        id: 'outreach-bot',
-        category: 'AI & AUTOMATION',
-        title: 'AI Lead Outreach & Prospecting Engine',
-        description: 'An automated B2B prospecting tool that scrapes target leads across Instagram, LinkedIn, and Google Maps, analyzes their online presence using local LLMs, and queues hyper-personalized outreach sequences.',
+        id: 'physics-portfolio',
+        category: 'CREATIVE 3D WEB & GAME DEV',
+        title: 'Interactive 3D Physics Web Engine & Stunt Arena',
+        description: 'A cutting-edge Bruno Simon-inspired 3D physics portfolio built with Three.js and Cannon-es, featuring arcade car & bike physics, destructible bowling pins, dynamic engine audio synthesis, and real-time radar.',
         highlights: [
-            'Multi-platform scraping with stealth headless browser automation',
-            'Context-aware message personalization based on profile bios & recent posts',
-            'Automated delivery queue with human-like randomized jitter delays to protect accounts',
-            'Comprehensive analytics dashboard tracking open, response, and conversion rates'
+            'Dual vehicle system (stunt bike & sports car) with real suspension & drift dynamics',
+            'Procedural Web Audio API sound synthesis with RPM pitch modulation and tire skid sound',
+            'Full stunt physics arena: launch ramps, loop-the-loops, bowling alleys, and domino runs',
+            'Real-time GPS radar minimap, telemetry speedometer, and glassmorphic HUD'
         ],
-        tags: ['Playwright', 'Python', 'FastAPI', 'Automation', 'Local LLMs'],
+        tags: ['Three.js', 'Cannon-es', 'WebGL', 'Web Audio API', 'React', 'Vite'],
         demoUrl: '#',
         githubUrl: 'https://github.com',
         color: '#f97316'
     },
     {
-        id: 'doc-organizer',
-        category: 'DESKTOP AUTOMATION',
-        title: 'Smart Offline Document & PDF Organizer',
-        description: 'A 100% offline privacy-first desktop application that reads internal PDF text, classifies invoices, receipts, and contracts, extracts dates and vendor names, and automatically standardizes messy file archives.',
+        id: 'drumcraft-studio',
+        category: 'INTERACTIVE AUDIO & UI',
+        title: 'DrumCraft Studio — Pro Web Audio MPC & Drum Machine',
+        description: 'A browser-based music production station featuring a responsive 16-pad MPC grid, interactive 3D drum kit view, step sequencer, and 60 FPS real-time audio visualizers.',
         highlights: [
-            'Zero API keys required — completely offline and privacy-compliant for legal & accounting',
-            'Smart rule-based heuristic extraction for vendor names, dates, amounts, and invoice numbers',
-            'Dry-run preview table and 1-click batch undo rollback engine',
-            'Live background filesystem watchdog for real-time downloads sorting'
+            'Ultra-low latency audio engine using Web Audio API buffer scheduling',
+            'Dynamic audio visualizer rendering live frequency spectrums and waveforms',
+            'Interactive 16-pad MPC grid with velocity simulation and custom sample loading',
+            'Integrated Rhythm Academy with real-time rhythm timing feedback'
         ],
-        tags: ['Python', 'pypdf', 'Tkinter', 'Watchdog', 'Desktop Automation'],
-        demoUrl: '#',
-        githubUrl: 'https://github.com',
-        color: '#3b82f6'
-    },
-    {
-        id: 'physics-portfolio',
-        category: 'CREATIVE 3D WEB',
-        title: 'Interactive 3D Physics Web Engine',
-        description: 'A Bruno Simon-inspired 3D physics portfolio built from scratch with Three.js and Cannon-es, featuring arcade car physics, destructible bowling pins, procedural Web Audio sound synthesis, and real-time radar.',
-        highlights: [
-            'Custom arcade vehicle dynamics with steering, drifting, and suspension',
-            'Procedural Web Audio API sound engine with dynamic engine RPM pitch and horn synthesis',
-            'Destructible physics props (pins, domino runs, jump ramps, smashable skill cubes)',
-            'Ultra-smooth isometric camera follow and glassmorphic HUD controls'
-        ],
-        tags: ['Three.js', 'Cannon-es', 'WebGL', 'Web Audio API', 'Vite'],
+        tags: ['React', 'Web Audio API', 'Canvas API', 'Sound Design', 'Vite'],
         demoUrl: '#',
         githubUrl: 'https://github.com',
         color: '#10b981'
     },
     {
+        id: 'virtuosokeys-piano',
+        category: 'CREATIVE TECH & VISUALS',
+        title: 'VirtuosoKeys — 88-Key Interactive Piano & Synthesizer',
+        description: 'A full concert-grand virtual piano and synthesizer featuring polyphonic Web Audio synthesis, interactive song tutorials, visual cascading note visualizers, and MIDI keyboard support.',
+        highlights: [
+            'Polyphonic harmonic sound synthesis modeling real acoustic resonance and decay',
+            'Interactive waterfall note visualizer synchronized to playable MIDI songs',
+            'Dual mode: Free-play concert grand & structured interactive Piano Academy',
+            'Full keyboard bindings with velocity sensitivity and sustain pedal simulation'
+        ],
+        tags: ['React', 'Web Audio API', 'Interactive Audio', 'Canvas', 'Music Theory'],
+        demoUrl: '#',
+        githubUrl: 'https://github.com',
+        color: '#3b82f6'
+    },
+    {
         id: 'collab-canvas',
-        category: 'FULL-STACK REALTIME',
-        title: 'Realtime Multiplayer Infinite Canvas',
-        description: 'A high-performance collaborative design board and vector graphics whiteboard that lets distributed teams sketch, annotate, and brainstorm in real-time with zero lag.',
+        category: 'VECTOR ART & REALTIME TECH',
+        title: 'Realtime Multiplayer Infinite Canvas & Art Board',
+        description: 'A high-performance collaborative design board and vector graphics whiteboard that lets distributed teams sketch, illustrate, and annotate in real-time with zero lag.',
         highlights: [
             'WebSocket binary CRDT synchronization for seamless conflict-free collaborative editing',
-            'Infinite canvas viewport with smooth GPU-accelerated panning and zooming',
+            'Infinite canvas viewport with smooth GPU-accelerated panning, zooming, and drawing',
             'Multiplayer live cursor broadcasting with user presence indicators',
-            'Export to SVG, high-res PNG, and JSON serialization'
+            'Export to SVG, high-res PNG, and JSON serialization for artwork'
         ],
-        tags: ['TypeScript', 'WebSockets', 'Canvas API', 'Node.js', 'Tailwind'],
+        tags: ['TypeScript', 'WebSockets', 'Canvas API', 'Digital Art', 'Node.js'],
         demoUrl: '#',
         githubUrl: 'https://github.com',
         color: '#8b5cf6'

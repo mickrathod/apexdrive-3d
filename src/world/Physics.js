@@ -11,6 +11,8 @@ export class Physics {
         this.world.broadphase = new CANNON.SAPBroadphase(this.world);
         this.world.allowSleep = true;
         this.world.defaultContactMaterial.friction = 0.3;
+        this.world.solver.iterations = 7;
+        this.world.solver.tolerance = 0.001;
 
         // Custom physics materials
         this.groundMaterial = new CANNON.Material('ground');
@@ -71,6 +73,6 @@ export class Physics {
     step(deltaTime) {
         // Clamp deltaTime to avoid physics explosion on lag spikes
         const dt = Math.min(deltaTime, 0.05);
-        this.world.step(1 / 60, dt, 3);
+        this.world.step(1 / 60, dt, 2);
     }
 }

@@ -19,6 +19,7 @@ export class World {
         this.modalManager = modalManager;
         this.soundManager = soundManager;
         this.onScoreUpdate = onScoreUpdate;
+        this.currentZone = '🏁 CENTRAL SPAWN PLAZA';
 
         this.setupLighting();
         this.createFloor();
@@ -61,17 +62,17 @@ export class World {
 
     setupLighting() {
         // Bruno Simon warm studio bounce light
-        const hemiLight = new THREE.HemisphereLight(0xfff8ee, 0xd4c5b3, 1.4);
+        const hemiLight = new THREE.HemisphereLight(0xfff8ee, 0xd4c5b3, 1.5);
         this.scene.add(hemiLight);
 
         // Warm directional sunlight casting clean soft shadows
-        this.sun = new THREE.DirectionalLight(0xffffff, 2.2);
+        this.sun = new THREE.DirectionalLight(0xffffff, 2.3);
         this.sun.position.set(65, 95, 55);
         this.sun.castShadow = true;
 
-        // Shadow configuration for crisp yet soft shadows
-        this.sun.shadow.mapSize.width = 2048;
-        this.sun.shadow.mapSize.height = 2048;
+        // Optimized shadow configuration
+        this.sun.shadow.mapSize.width = 1024;
+        this.sun.shadow.mapSize.height = 1024;
         this.sun.shadow.camera.near = 10;
         this.sun.shadow.camera.far = 250;
 
@@ -80,18 +81,60 @@ export class World {
         this.sun.shadow.camera.right = d;
         this.sun.shadow.camera.top = d;
         this.sun.shadow.camera.bottom = -d;
-        this.sun.shadow.bias = -0.0005;
+        this.sun.shadow.bias = -0.0001;
+        this.sun.shadow.normalBias = 0.04;
 
         this.scene.add(this.sun);
+
+        // Cool blue rim light from opposite angle for cinematic contrast
+        const rimLight = new THREE.DirectionalLight(0x93c5fd, 0.75);
+        rimLight.position.set(-65, 45, -55);
+        this.scene.add(rimLight);
     }
 
     createFloor() {
-        // Main Ground Plane: Bruno Simon warm clay/sand floor
+        // High-end stylized tactical grid texture on warm studio clay
+        const floorCanvas = document.createElement('canvas');
+        floorCanvas.width = 512;
+        floorCanvas.height = 512;
+        const fctx = floorCanvas.getContext('2d');
+
+        // Warm clay background
+        fctx.fillStyle = '#ded4c5';
+        fctx.fillRect(0, 0, 512, 512);
+
+        // Subtle architectural grid
+        fctx.strokeStyle = 'rgba(195, 182, 165, 0.4)';
+        fctx.lineWidth = 2;
+        for (let i = 0; i <= 512; i += 64) {
+            fctx.beginPath();
+            fctx.moveTo(i, 0); fctx.lineTo(i, 512);
+            fctx.stroke();
+            fctx.beginPath();
+            fctx.moveTo(0, i); fctx.lineTo(512, i);
+            fctx.stroke();
+        }
+
+        // Tactile grid dot intersections
+        fctx.fillStyle = 'rgba(150, 136, 118, 0.5)';
+        for (let x = 0; x <= 512; x += 64) {
+            for (let y = 0; y <= 512; y += 64) {
+                fctx.beginPath();
+                fctx.arc(x, y, 3, 0, Math.PI * 2);
+                fctx.fill();
+            }
+        }
+
+        const floorTex = new THREE.CanvasTexture(floorCanvas);
+        floorTex.wrapS = THREE.RepeatWrapping;
+        floorTex.wrapT = THREE.RepeatWrapping;
+        floorTex.repeat.set(24, 24);
+
         const groundGeo = new THREE.PlaneGeometry(240, 240);
         const groundMat = new THREE.MeshStandardMaterial({
-            color: 0xded4c5,
-            roughness: 0.92,
-            metalness: 0.02
+            map: floorTex,
+            roughness: 0.88,
+            metalness: 0.04
         });
         this.ground = new THREE.Mesh(groundGeo, groundMat);
         this.ground.rotation.x = -Math.PI / 2;
@@ -338,24 +381,28 @@ export class World {
             this.stuntProps.update(delta);
         }
 
-        // Check which zone player is in and trigger banner notification
-        if (bikePos) {
+        // Check which zone player is in and trigger banner ONLY when entering a new zone
+        if (bikePos && this.modalManager?.showZoneBanner) {
             const x = bikePos.x;
             const y = bikePos.y;
             const z = bikePos.z;
 
+            let zoneName = '🏁 CENTRAL SPAWN PLAZA';
             if (y > 6.0 || (x < -15 && z < -50)) {
-                this.modalManager.showZoneBanner('🎢 SKY ROLLER COASTER & DROP');
+                zoneName = '🎢 SKY ROLLER COASTER & DROP';
             } else if (x < -20 && z < -20) {
-                this.modalManager.showZoneBanner('⚡ STUNT & PHYSICS ARENA');
+                zoneName = '⚡ STUNT & PHYSICS ARENA';
             } else if (x > 20 && z < -20) {
-                this.modalManager.showZoneBanner('💼 FEATURED PROJECTS ZONE');
+                zoneName = '💼 FEATURED PROJECTS ZONE';
             } else if (x > 20 && z > 20) {
-                this.modalManager.showZoneBanner('⚡ SKILLS DESTRUCTION ARENA');
+                zoneName = '⚡ SKILLS DESTRUCTION ARENA';
             } else if (x < -20 && z > 20) {
-                this.modalManager.showZoneBanner('📬 CONTACT & SOCIAL ZONE');
-            } else {
-                this.modalManager.showZoneBanner('🏁 CENTRAL SPAWN PLAZA');
+                zoneName = '📬 CONTACT & SOCIAL ZONE';
+            }
+
+            if (zoneName !== this.currentZone) {
+                this.currentZone = zoneName;
+                this.modalManager.showZoneBanner(zoneName);
             }
         }
     }

@@ -65,7 +65,10 @@ export class StuntProps {
                     shape: shape,
                     position: new CANNON.Vec3(posX, posY, posZ),
                     linearDamping: 0.15,
-                    angularDamping: 0.25
+                    angularDamping: 0.25,
+                    allowSleep: true,
+                    sleepSpeedLimit: 0.15,
+                    sleepTimeLimit: 0.4
                 });
                 this.physics.world.addBody(body);
 
@@ -129,7 +132,10 @@ export class StuntProps {
                 material: this.physics.defaultMaterial,
                 shape: shape,
                 position: new CANNON.Vec3(p.x, p.y, p.z),
-                linearDamping: 0.1
+                linearDamping: 0.1,
+                allowSleep: true,
+                sleepSpeedLimit: 0.15,
+                sleepTimeLimit: 0.4
             });
             this.physics.world.addBody(body);
 
@@ -178,7 +184,10 @@ export class StuntProps {
                     shape: shape,
                     position: new CANNON.Vec3(posX, posY, posZ),
                     linearDamping: 0.15,
-                    angularDamping: 0.2
+                    angularDamping: 0.2,
+                    allowSleep: true,
+                    sleepSpeedLimit: 0.15,
+                    sleepTimeLimit: 0.4
                 });
                 this.physics.world.addBody(body);
 
@@ -285,23 +294,29 @@ export class StuntProps {
     }
 
     update(delta = 0.016) {
-        // Barrels sync
-        this.barrels.forEach(b => {
-            b.group.position.copy(b.body.position);
-            b.group.quaternion.copy(b.body.quaternion);
-        });
+        // Barrels sync (skip sleeping bodies)
+        for (const b of this.barrels) {
+            if (b.body.sleepState !== CANNON.Body.SLEEPING) {
+                b.group.position.copy(b.body.position);
+                b.group.quaternion.copy(b.body.quaternion);
+            }
+        }
 
-        // Crates sync
-        this.crates.forEach(c => {
-            c.mesh.position.copy(c.body.position);
-            c.mesh.quaternion.copy(c.body.quaternion);
-        });
+        // Crates sync (skip sleeping bodies)
+        for (const c of this.crates) {
+            if (c.body.sleepState !== CANNON.Body.SLEEPING) {
+                c.mesh.position.copy(c.body.position);
+                c.mesh.quaternion.copy(c.body.quaternion);
+            }
+        }
 
         // Bowling pins sync & strike check
         let knockedCount = 0;
-        this.bowlingPins.forEach(p => {
-            p.group.position.copy(p.body.position);
-            p.group.quaternion.copy(p.body.quaternion);
+        for (const p of this.bowlingPins) {
+            if (p.body.sleepState !== CANNON.Body.SLEEPING) {
+                p.group.position.copy(p.body.position);
+                p.group.quaternion.copy(p.body.quaternion);
+            }
 
             if (p.body.position.y < 0.6 || Math.abs(p.body.quaternion.x) > 0.4 || Math.abs(p.body.quaternion.z) > 0.4) {
                 if (!p.knocked) {
@@ -310,7 +325,7 @@ export class StuntProps {
                 }
                 knockedCount++;
             }
-        });
+        }
 
         if (knockedCount >= 6 && !this.strikeTriggered) {
             this.strikeTriggered = true;

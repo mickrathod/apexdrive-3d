@@ -2,14 +2,14 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 
 const SKILLS_DATA = [
-    { name: 'JavaScript', color: '#f7df1e', textColor: '#000000', icon: 'JS' },
+    { name: 'Three.js / 3D', color: '#049ef4', textColor: '#ffffff', icon: '🌐' },
+    { name: 'Digital Art', color: '#ec4899', textColor: '#ffffff', icon: '🎨' },
+    { name: 'Creative Code', color: '#8b5cf6', textColor: '#ffffff', icon: '✨' },
+    { name: 'React.js', color: '#61dafb', textColor: '#000000', icon: '⚛️' },
+    { name: 'Web Audio API', color: '#10b981', textColor: '#ffffff', icon: '🔊' },
+    { name: 'GLSL Shaders', color: '#f59e0b', textColor: '#ffffff', icon: '🔮' },
     { name: 'TypeScript', color: '#3178c6', textColor: '#ffffff', icon: 'TS' },
-    { name: 'Three.js', color: '#049ef4', textColor: '#ffffff', icon: '3D' },
-    { name: 'React', color: '#61dafb', textColor: '#000000', icon: '⚛️' },
-    { name: 'Python', color: '#3776ab', textColor: '#ffffff', icon: '🐍' },
-    { name: 'Node.js', color: '#68a063', textColor: '#ffffff', icon: '🟢' },
-    { name: 'Blender', color: '#e87d0d', textColor: '#ffffff', icon: '🎨' },
-    { name: 'GLSL Shaders', color: '#ff4081', textColor: '#ffffff', icon: '✨' }
+    { name: 'Game Physics', color: '#ef4444', textColor: '#ffffff', icon: '⚡' }
 ];
 
 export class SkillsZone {

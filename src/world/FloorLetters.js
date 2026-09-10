@@ -79,7 +79,10 @@ export class FloorLetters {
                 material: this.physics.obstacleMaterial,
                 position: new CANNON.Vec3(posX, posY, posZ),
                 linearDamping: 0.2,
-                angularDamping: 0.3
+                angularDamping: 0.3,
+                allowSleep: true,
+                sleepSpeedLimit: 0.15,
+                sleepTimeLimit: 0.4
             });
             body.addShape(shape);
             this.physics.world.addBody(body);
@@ -90,8 +93,10 @@ export class FloorLetters {
 
     update() {
         for (const item of this.blocks) {
-            item.mesh.position.copy(item.body.position);
-            item.mesh.quaternion.copy(item.body.quaternion);
+            if (item.body.sleepState !== CANNON.Body.SLEEPING) {
+                item.mesh.position.copy(item.body.position);
+                item.mesh.quaternion.copy(item.body.quaternion);
+            }
         }
     }
 }

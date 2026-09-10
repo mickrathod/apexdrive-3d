@@ -42,20 +42,14 @@ export class Collectibles {
         });
 
         this.coinPositions.forEach((pos, index) => {
-            const mesh = new THREE.Mesh(coinGeo, coinMat.clone());
+            const mesh = new THREE.Mesh(coinGeo, coinMat);
             mesh.position.set(pos.x, pos.y, pos.z);
             mesh.castShadow = true;
             this.scene.add(mesh);
 
-            // Floating star light inside coin
-            const light = new THREE.PointLight(0xf59e0b, 1.2, 5);
-            light.position.set(pos.x, pos.y, pos.z);
-            this.scene.add(light);
-
             this.coins.push({
                 id: index,
                 mesh: mesh,
-                light: light,
                 baseY: pos.y,
                 collected: false
             });
@@ -75,7 +69,7 @@ export class Collectibles {
                 life: 0.6,
                 vel: new THREE.Vector3(
                     (Math.random() - 0.5) * 4,
-                    Math.random() * 3 + 1,
+                    Math.random() * 4 + 2,
                     (Math.random() - 0.5) * 4
                 )
             });
@@ -83,7 +77,7 @@ export class Collectibles {
     }
 
     update(bikePos, delta) {
-        const time = Date.now() * 0.003;
+        const time = performance.now() * 0.003;
 
         // Animate floating & spinning coins
         for (const coin of this.coins) {
@@ -91,7 +85,6 @@ export class Collectibles {
 
             coin.mesh.rotation.y += delta * 3.5;
             coin.mesh.position.y = coin.baseY + Math.sin(time + coin.id) * 0.2;
-            coin.light.position.y = coin.mesh.position.y;
 
             // Check pickup distance
             if (bikePos) {
@@ -99,7 +92,6 @@ export class Collectibles {
                 if (dist < 1.8) {
                     coin.collected = true;
                     this.scene.remove(coin.mesh);
-                    this.scene.remove(coin.light);
                     this.soundManager.playCoin();
                     this.spawnSparkles(coin.mesh.position);
                     this.collectedCount++;

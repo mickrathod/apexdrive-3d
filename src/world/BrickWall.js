@@ -49,7 +49,10 @@ export class BrickWall {
                     material: this.physics.obstacleMaterial,
                     position: new CANNON.Vec3(x, y, z),
                     linearDamping: 0.1,
-                    angularDamping: 0.2
+                    angularDamping: 0.2,
+                    allowSleep: true,
+                    sleepSpeedLimit: 0.15,
+                    sleepTimeLimit: 0.4
                 });
                 body.addShape(shape);
                 this.physics.world.addBody(body);
@@ -61,8 +64,10 @@ export class BrickWall {
 
     update() {
         for (const b of this.bricks) {
-            b.mesh.position.copy(b.body.position);
-            b.mesh.quaternion.copy(b.body.quaternion);
+            if (b.body.sleepState !== CANNON.Body.SLEEPING) {
+                b.mesh.position.copy(b.body.position);
+                b.mesh.quaternion.copy(b.body.quaternion);
+            }
         }
     }
 }

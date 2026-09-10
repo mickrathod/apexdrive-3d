@@ -11,6 +11,7 @@ export const TopHUD = ({
   isMuted,
   onThemeToggle,
   onAboutClick,
+  onHireClick,
   onContactClick,
   onCameraToggle,
   onSwitchVehicle,
@@ -20,11 +21,19 @@ export const TopHUD = ({
   return (
     <header className="top-hud">
       <div className="brand">
-        <span className="brand-badge">BRUNO SIMON 3D</span>
-        <h1>MANAV<span className="accent">.BIKE</span></h1>
+        <span className="brand-badge">CREATIVE TECHNOLOGIST</span>
+        <h1>MANAV<span className="accent">.STUDIO</span></h1>
       </div>
 
       <nav className="hud-nav">
+        <button
+          className="hud-btn hud-btn-hire"
+          onClick={onHireClick}
+          title="Hire for 3D & Creative Web Projects"
+        >
+          <span className="hud-hire-pulse"></span>
+          🔥 Hire / Inquire
+        </button>
         <button
           className="hud-btn"
           onClick={onThemeToggle}

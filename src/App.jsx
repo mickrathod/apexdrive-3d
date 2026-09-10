@@ -77,6 +77,10 @@ export function App() {
     setActiveModal({ type: 'contact' });
   };
 
+  const handleHireClick = () => {
+    setActiveModal({ type: 'hire' });
+  };
+
   return (
     <div className="game-container">
       {/* 3D WebGL Canvas Viewport */}
@@ -95,6 +99,7 @@ export function App() {
         isMuted={isMuted}
         onThemeToggle={handleThemeToggle}
         onAboutClick={handleAboutClick}
+        onHireClick={handleHireClick}
         onContactClick={handleContactClick}
         onCameraToggle={handleCameraToggle}
         onSwitchVehicle={handleSwitchVehicle}
