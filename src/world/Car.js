@@ -22,6 +22,7 @@ export class Car {
         this.steerSpeed = 4.0;
         this.yaw = 0;
         this.driftFriction = 0.82;
+        this.wheelAngle = 0;
 
         this.isBraking = false;
         this.isDrifting = false;
@@ -204,6 +205,32 @@ export class Car {
             this.wheelRL = carModel.getObjectByName('wheel_rl');
             this.wheelRR = carModel.getObjectByName('wheel_rr');
             this.steeringWheelNode = carModel.getObjectByName('steering_wheel');
+
+            // Wrap front wheels in dedicated steering pivot groups to cleanly separate
+            // vertical kingpin steering (Y-axis) from rolling drive rotation (X-axis).
+            // This completely eliminates Euler angle gimbal lock and wheel shaking/wobble.
+            if (this.wheelFL && this.wheelFL.parent) {
+                const parent = this.wheelFL.parent;
+                this.steerPivotFL = new THREE.Group();
+                this.steerPivotFL.name = 'steer_pivot_fl';
+                this.steerPivotFL.position.copy(this.wheelFL.position);
+                parent.add(this.steerPivotFL);
+
+                this.wheelFL.position.set(0, 0, 0);
+                this.steerPivotFL.add(this.wheelFL);
+            }
+
+            if (this.wheelFR && this.wheelFR.parent) {
+                const parent = this.wheelFR.parent;
+                this.steerPivotFR = new THREE.Group();
+                this.steerPivotFR.name = 'steer_pivot_fr';
+                this.steerPivotFR.position.copy(this.wheelFR.position);
+                parent.add(this.steerPivotFR);
+
+                this.wheelFR.position.set(0, 0, 0);
+                this.steerPivotFR.add(this.wheelFR);
+            }
+
             if (this.standbyMesh) {
                 this.mesh.remove(this.standbyMesh);
                 this.standbyMesh = null;
@@ -307,6 +334,9 @@ export class Car {
         this.yaw = Number.isFinite(yaw) ? yaw : 0;
         this.speed = Number.isFinite(speed) ? speed : 0;
         this.steeringAngle = 0;
+        this.wheelAngle = 0;
+        if (this.steerPivotFL) this.steerPivotFL.rotation.y = 0;
+        if (this.steerPivotFR) this.steerPivotFR.rotation.y = 0;
 
         this.mesh.position.copy(this.body.position);
         const quatY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
@@ -349,6 +379,13 @@ export class Car {
         this.yaw = 0;
         this.speed = 0;
         this.steeringAngle = 0;
+        this.wheelAngle = 0;
+        if (this.steerPivotFL) this.steerPivotFL.rotation.y = 0;
+        if (this.steerPivotFR) this.steerPivotFR.rotation.y = 0;
+        if (this.wheelFL) this.wheelFL.rotation.x = 0;
+        if (this.wheelFR) this.wheelFR.rotation.x = 0;
+        if (this.wheelRL) this.wheelRL.rotation.x = 0;
+        if (this.wheelRR) this.wheelRR.rotation.x = 0;
         this.body.wakeUp();
     }
 
@@ -432,17 +469,21 @@ export class Car {
         // 5. Animate Real Three.js Ferrari Wheels & Steering Wheel
         if (this.carModel) {
             const wheelRotSpeed = (this.speed / 0.35) * delta;
+            this.wheelAngle = ((this.wheelAngle || 0) - wheelRotSpeed) % (Math.PI * 2);
 
-            if (this.wheelFL) {
-                this.wheelFL.rotation.x -= wheelRotSpeed;
-                this.wheelFL.rotation.y = this.steeringAngle;
+            // Steer front wheel assemblies cleanly around vertical Y axis (no camber/tilt/shaking)
+            if (this.steerPivotFL) {
+                this.steerPivotFL.rotation.y = this.steeringAngle;
             }
-            if (this.wheelFR) {
-                this.wheelFR.rotation.x -= wheelRotSpeed;
-                this.wheelFR.rotation.y = this.steeringAngle;
+            if (this.steerPivotFR) {
+                this.steerPivotFR.rotation.y = this.steeringAngle;
             }
-            if (this.wheelRL) this.wheelRL.rotation.x -= wheelRotSpeed;
-            if (this.wheelRR) this.wheelRR.rotation.x -= wheelRotSpeed;
+
+            // Spin wheels smoothly along their rolling X-axis
+            if (this.wheelFL) this.wheelFL.rotation.x = this.wheelAngle;
+            if (this.wheelFR) this.wheelFR.rotation.x = this.wheelAngle;
+            if (this.wheelRL) this.wheelRL.rotation.x = this.wheelAngle;
+            if (this.wheelRR) this.wheelRR.rotation.x = this.wheelAngle;
 
             if (this.steeringWheelNode) {
                 this.steeringWheelNode.rotation.z = -this.steeringAngle * 2.2;
