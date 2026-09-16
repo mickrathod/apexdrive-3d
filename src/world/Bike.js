@@ -105,7 +105,7 @@ export class Bike {
     }
 
     loadRealModel() {
-        loadGLTF('/models/motorcycle.glb').then((gltf) => {
+        loadGLTF('models/motorcycle.glb').then((gltf) => {
             const bikeModel = gltf.scene;
 
             // Measure dimensions

@@ -55,11 +55,79 @@ export class Car {
 
     createVisualMesh() {
         this.mesh = new THREE.Group();
+        this.createStandbyCarMesh();
         this.scene.add(this.mesh);
     }
 
+    createStandbyCarMesh() {
+        this.standbyMesh = new THREE.Group();
+
+        // Main aerodynamic sports chassis
+        const chassisGeo = new THREE.BoxGeometry(1.5, 0.42, 3.0);
+        const redMat = new THREE.MeshStandardMaterial({
+            color: 0xef4444, // Rosso Corsa
+            metalness: 0.85,
+            roughness: 0.22
+        });
+        const chassis = new THREE.Mesh(chassisGeo, redMat);
+        chassis.position.y = 0.06;
+        chassis.castShadow = true;
+        this.standbyMesh.add(chassis);
+
+        // Cockpit & tinted glass
+        const cabinGeo = new THREE.BoxGeometry(1.15, 0.38, 1.5);
+        const glassMat = new THREE.MeshStandardMaterial({
+            color: 0x0f172a,
+            metalness: 0.9,
+            roughness: 0.1
+        });
+        const cabin = new THREE.Mesh(cabinGeo, glassMat);
+        cabin.position.set(0, 0.42, -0.15);
+        cabin.castShadow = true;
+        this.standbyMesh.add(cabin);
+
+        // 4 Styled Wheels
+        const wheelGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.26, 20);
+        const wheelMat = new THREE.MeshStandardMaterial({
+            color: 0x111827,
+            roughness: 0.7
+        });
+        const rimMat = new THREE.MeshStandardMaterial({
+            color: 0xf8fafc,
+            metalness: 0.95,
+            roughness: 0.15
+        });
+
+        const wheelPositions = [
+            [-0.82, -0.12, -0.95],
+            [0.82, -0.12, -0.95],
+            [-0.82, -0.12, 0.95],
+            [0.82, -0.12, 0.95]
+        ];
+
+        this.standbyWheels = [];
+        wheelPositions.forEach(([x, y, z]) => {
+            const wGroup = new THREE.Group();
+            const tire = new THREE.Mesh(wheelGeo, wheelMat);
+            tire.rotation.z = Math.PI / 2;
+            tire.castShadow = true;
+            wGroup.add(tire);
+
+            const rimGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.27, 12);
+            const rim = new THREE.Mesh(rimGeo, rimMat);
+            rim.rotation.z = Math.PI / 2;
+            wGroup.add(rim);
+
+            wGroup.position.set(x, y, z);
+            this.standbyMesh.add(wGroup);
+            this.standbyWheels.push(wGroup);
+        });
+
+        this.mesh.add(this.standbyMesh);
+    }
+
     loadRealFerrari() {
-        loadGLTF('/models/ferrari.glb').then((gltf) => {
+        loadGLTF('models/ferrari.glb').then((gltf) => {
             const carModel = gltf.scene.children[0];
 
             // Scale and center Ferrari cleanly over physics collision body
@@ -136,11 +204,15 @@ export class Car {
             this.wheelRL = carModel.getObjectByName('wheel_rl');
             this.wheelRR = carModel.getObjectByName('wheel_rr');
             this.steeringWheelNode = carModel.getObjectByName('steering_wheel');
+            if (this.standbyMesh) {
+                this.mesh.remove(this.standbyMesh);
+                this.standbyMesh = null;
+            }
 
             this.mesh.add(carModel);
             this.carModel = carModel;
         }).catch((err) => {
-            console.error('Error loading Ferrari 3D model:', err);
+            console.warn('Ferrari GLTF model fallback to standby chassis:', err);
         });
     }
 
