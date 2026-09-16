@@ -38,13 +38,13 @@ export class Car {
     }
 
     createPhysicsBody() {
-        // Physical chassis bounding box
-        const chassisShape = new CANNON.Box(new CANNON.Vec3(0.9, 0.35, 1.6));
+        // Physical chassis bounding box with ground clearance so it never scrapes the road plane
+        const chassisShape = new CANNON.Box(new CANNON.Vec3(0.85, 0.22, 1.45));
         this.body = new CANNON.Body({
             mass: 140,
             material: this.physics.carMaterial,
             shape: chassisShape,
-            position: new CANNON.Vec3(0, 0.45, 0),
+            position: new CANNON.Vec3(0, 0.42, 0),
             linearDamping: 0.05,
             angularDamping: 0.9
         });
@@ -169,13 +169,13 @@ export class Car {
                 roughness: 0.35
             });
 
-            const glassMaterial = new THREE.MeshPhysicalMaterial({
-                color: 0xffffff,
-                metalness: 0.1,
-                roughness: 0,
-                transmission: 0.92,
+            // High-performance tinted glass without expensive transmission framebuffer copies
+            const glassMaterial = new THREE.MeshStandardMaterial({
+                color: 0x0f172a,
+                metalness: 0.9,
+                roughness: 0.1,
                 transparent: true,
-                opacity: 0.85
+                opacity: 0.65
             });
 
             const bodyObj = carModel.getObjectByName('body');
@@ -429,11 +429,11 @@ export class Car {
 
         // Anti-NaN & Anti-void safety check: prevent car from ever corrupting coordinates
         if (!Number.isFinite(this.body.position.x) || !Number.isFinite(this.body.position.y) || !Number.isFinite(this.body.position.z)) {
-            this.body.position.set(0, 0.45, 0);
+            this.body.position.set(0, 0.42, 0);
             this.body.velocity.set(0, 0, 0);
             this.body.angularVelocity.set(0, 0, 0);
-        } else if (this.body.position.y < 0.2) {
-            this.body.position.y = 0.45;
+        } else if (this.body.position.y < 0.35) {
+            this.body.position.y = 0.42;
             this.body.velocity.y = Math.max(0, this.body.velocity.y);
         }
 

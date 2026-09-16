@@ -71,8 +71,8 @@ export class Physics {
     }
 
     step(deltaTime) {
-        // Clamp deltaTime to avoid physics explosion on lag spikes
-        const dt = Math.min(deltaTime, 0.05);
-        this.world.step(1 / 60, dt, 2);
+        // Step Cannon physics with fluid, unquantized delta time to prevent stop-start frame judder
+        const dt = Math.max(0.001, Math.min(deltaTime, 0.033));
+        this.world.step(dt);
     }
 }
